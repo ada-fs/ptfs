@@ -546,44 +546,6 @@ static struct fuse_operations pt_oper = {
 };
 
 
-// TODO: using realpath(3) instead?
-static char * make_absolute(const char* name)
-{
-    char cwd[MAX_PATHLEN+1];
-    size_t cwdlen = 0;
-    size_t namelen = strlen(name);
-    size_t abspathlen = 0;
-    char *abspath = NULL;
-
-    if (*name != '/') {
-        if (!getcwd(cwd, MAX_PATHLEN)) {
-            perror("Unable to get current working directory");
-            return NULL;
-        }
-        else {
-            cwdlen = strlen(cwd);
-            cwd[cwdlen+1] = '/';
-        }
-    }
-    abspathlen = cwdlen + namelen + 2;
-    if (abspathlen > MAX_PATHLEN) {
-        fprintf(stderr, "Path greater than maximum name size (%i)\n", MAX_PATHLEN);
-    }
-    else {
-        abspath = (char *) malloc(abspathlen);
-        if (abspath == NULL) {
-            fprintf(stderr, "Insufficent memory when allocation space for path\n");
-        }
-        else {
-            strncpy(abspath, cwd, cwdlen);
-            strncpy(&abspath[cwdlen], name, namelen);
-            fprintf(stdout, "DEBUG: abspath: (%s)\n", abspath);
-        }
-    }
-
-    return abspath;
-}
-
 struct pt_opt_struct {
     unsigned long val;
     char * str;
@@ -602,7 +564,8 @@ int pt_opt_proc(void *data, const char* arg, int key, struct fuse_args *outargs)
     {
         case FUSE_OPT_KEY_NONOPT:
             if (!root) {
-                root = make_absolute(arg);
+                root = NULL;
+                root = realpath(arg, root);
                 return 0;
             }
             return 1;
@@ -610,6 +573,7 @@ int pt_opt_proc(void *data, const char* arg, int key, struct fuse_args *outargs)
             return 1;
     }
 }
+
 
 int main(int argc, char *argv[])
 {
@@ -625,7 +589,7 @@ int main(int argc, char *argv[])
         exit(1);
     }
     else {
-        printf("arguements to fuse_main: ");
+        printf("arguments to fuse_main: ");
         for (int i=0; i < args.argc; i++) {
             printf("%s ", args.argv[i]);
         }
